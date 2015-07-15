@@ -15,6 +15,7 @@ import robocode.ScannedRobotEvent;
 public class Shadowbot extends AdvancedRobot
 {
 	ScannedRobotEvent lastScan;
+	Coordinates enemyCoordinates;
 
 
 	/**
@@ -27,6 +28,9 @@ public class Shadowbot extends AdvancedRobot
 		// and the next line:
 
 		setColors(Color.black,Color.black,Color.black); // body,gun,radar
+		setAdjustGunForRobotTurn(true);
+		setAdjustRadarForGunTurn(true);
+		setAdjustRadarForRobotTurn(true);
 
 		turn(0);
 		// Robot main loop
@@ -37,23 +41,38 @@ public class Shadowbot extends AdvancedRobot
 				//if(lastScan != null )System.out.println(getTime() - lastScan. getTime());
 				turnRadarRight(360);
 			}else{
+				Coordinates enemyCoords = pointToEnemy();
+
+				turn(enemyCoords.getTheta());
+				
+				setAhead(10);
+				
 				//System.out.println(getHeading() + " " + lastScan. getRadarHeading());
 				if(getRadarTurnRemaining() == 0){
-					turnRadar(lastScan.getBearing() + radarAngleAddons);
+					turnRadar(enemyCoords.getTheta() + radarAngleAddons);
+					//turnRadar(getHeading() + lastScan.getBearing() + radarAngleAddons);
 					radarAngleAddons *= -1;
 				}
-				if(getGunTurnRemaining() == 0)
-					turnGun(lastScan.getBearing());
-
+				if(getGunTurnRemaining() == 0){
+					//turnGun(getHeading() + lastScan.getBearing());
+					turnGun(enemyCoords.getTheta());
+				}
 				tuneFirePower(lastScan.getDistance(), lastScan.getVelocity());
 				execute();
 			}
 		}
 	}
 
+	private Coordinates pointToEnemy() {
+		double x = enemyCoordinates.getX() - getX();
+		double y = enemyCoordinates.getY() - getY();
+		Coordinates c = Coordinates.cartesian(x, y);
+		return c;
+	}
+
 	private void tuneFirePower(double targetDistance, double targetSpeed){
 		if(getGunTurnRemaining() > 5 || targetSpeed > 4)return;
-		if(targetDistance < 100){
+		if(targetDistance < 150){
 			setFire(Rules.MAX_BULLET_POWER);
 		}else{
 			setFire(1);
@@ -97,6 +116,9 @@ public class Shadowbot extends AdvancedRobot
 	 */
 	public void onScannedRobot(ScannedRobotEvent e) {
 		this.lastScan = e;
+		Coordinates enemyScanCoords = Coordinates.polar(e.getDistance(), getHeading() + e.getBearing());
+		enemyCoordinates = Coordinates.cartesian(enemyScanCoords.getX() + getX(), enemyScanCoords.getY() + getY()); 
+		//System.out.println(enemyCoordinates);
 	}
 
 	/**
