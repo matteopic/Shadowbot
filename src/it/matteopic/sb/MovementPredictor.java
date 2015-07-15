@@ -46,6 +46,7 @@ public class MovementPredictor {
 
 		double deltaT = time - s0.event.getTime();
 		double predictedSpace = deltaT * evt0.getVelocity();
+		return null;
 	}
 
 	private static class Snapshot {
