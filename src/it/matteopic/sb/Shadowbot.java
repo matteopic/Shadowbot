@@ -18,6 +18,7 @@ public class Shadowbot extends AdvancedRobot
 	ScannedRobotEvent lastScan;
 	Coordinates enemyCoordinates;
 	NearWallCondition nearWall;
+	HitByBulletEvent hitEvent;
 
 	/**
 	 * run: Shadowbot's default behavior
@@ -36,7 +37,7 @@ public class Shadowbot extends AdvancedRobot
 		addCustomEvent(new NearWallCondition(this));
 
 		// Robot main loop
-		double radarAngleAddons = +10;
+		double radarAngleAddons = +5;
 		while(true) {
 			if(lastScan == null || getTime() - lastScan.getTime() > 10){
 				turnRadarRight(360);
@@ -47,7 +48,10 @@ public class Shadowbot extends AdvancedRobot
 				if(nearWall != null){
 					escape(nearWall.getCoords());
 					nearWall = null;
-				}else{
+				}else if(hitEvent != null){
+					escape(enemyCoords);
+				}
+				else{
 					double distance = enemyCoords.getRadius();
 					if(distance > 100){
 						turn(enemyCoords.getTheta());
@@ -107,8 +111,8 @@ public class Shadowbot extends AdvancedRobot
 	}
 
 	private void tuneFirePower(double targetDistance, double targetSpeed){
-		//if(getGunTurnRemaining() > 5 || targetSpeed > 4)return;
-		if(targetDistance < 150){
+		if(getGunTurnRemaining() > 5 || targetSpeed >= 5)return;
+		if(targetDistance < 150 || targetSpeed == 0){
 			setFire(Rules.MAX_BULLET_POWER);
 		}else if(targetSpeed < 4){
 			setFire(1);
@@ -184,8 +188,7 @@ public class Shadowbot extends AdvancedRobot
 	 * onHitByBullet: What to do when you're hit by a bullet
 	 */
 	public void onHitByBullet(HitByBulletEvent e) {
-		// Replace the next line with any behavior you would like
-		back(10);
+		this.hitEvent = e;
 	}
 	
 	/**
