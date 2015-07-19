@@ -2,6 +2,7 @@ package it.matteopic.sb;
 import java.awt.Color;
 
 import robocode.AdvancedRobot;
+import robocode.CustomEvent;
 import robocode.HitByBulletEvent;
 import robocode.HitWallEvent;
 import robocode.Rules;
@@ -16,7 +17,7 @@ public class Shadowbot extends AdvancedRobot
 {
 	ScannedRobotEvent lastScan;
 	Coordinates enemyCoordinates;
-
+	NearWallCondition nearWall;
 
 	/**
 	 * run: Shadowbot's default behavior
@@ -32,35 +33,70 @@ public class Shadowbot extends AdvancedRobot
 		setAdjustRadarForGunTurn(true);
 		setAdjustRadarForRobotTurn(true);
 
-		turn(0);
+		addCustomEvent(new NearWallCondition(this));
+
 		// Robot main loop
 		double radarAngleAddons = +10;
 		while(true) {
 			if(lastScan == null || getTime() - lastScan.getTime() > 10){
-				//System.out.println("Refresh");
-				//if(lastScan != null )System.out.println(getTime() - lastScan. getTime());
 				turnRadarRight(360);
 			}else{
 				Coordinates enemyCoords = pointToEnemy();
+				//Coordinates nearestWall = getNearestWall();
 
-				turn(enemyCoords.getTheta());
-				
+				if(nearWall != null){
+					escape(nearWall.getCoords());
+					nearWall = null;
+				}else{
+					double distance = enemyCoords.getRadius();
+					if(distance > 100){
+						turn(enemyCoords.getTheta());
+					}else{
+						turnAround(lastScan);
+					}
+				}
+
 				setAhead(10);
 				
-				//System.out.println(getHeading() + " " + lastScan. getRadarHeading());
 				if(getRadarTurnRemaining() == 0){
 					turnRadar(enemyCoords.getTheta() + radarAngleAddons);
-					//turnRadar(getHeading() + lastScan.getBearing() + radarAngleAddons);
 					radarAngleAddons *= -1;
 				}
 				if(getGunTurnRemaining() == 0){
-					//turnGun(getHeading() + lastScan.getBearing());
 					turnGun(enemyCoords.getTheta());
 				}
 				tuneFirePower(lastScan.getDistance(), lastScan.getVelocity());
 				execute();
 			}
+
+			
 		}
+	}
+
+	Coordinates getNearestWall(){
+		double w = getBattleFieldWidth();
+		double h = getBattleFieldHeight();
+		double centerX = w / 2;
+		double centerY = h / 2;
+		double x = getX();
+		double y = getY();
+		
+		double deltaX = x > centerX ? w - x : x;
+		double deltaY = y > centerY ? h - y : y;
+		double targetAngle;
+		double radius;
+		if(deltaX < deltaY){
+			radius = deltaX;
+			targetAngle = x > centerX ? 90 : 270;
+		}else{
+			radius = deltaY;
+			targetAngle = y > centerY ? 0 : 180;
+		}
+		//System.out.printf("x:%s y:%s w:%s h:%s \u237a%s°\n", x, y, w, h, targetAngle);
+		//System.out.printf("\u0394x:%s \u0394y:%s \u237a:%s\n", deltaX, deltaY, targetAngle);
+		double theta = 360 - Math.abs(getHeading() - targetAngle); 
+		
+		return Coordinates.polar(radius, theta);
 	}
 
 	private Coordinates pointToEnemy() {
@@ -71,11 +107,29 @@ public class Shadowbot extends AdvancedRobot
 	}
 
 	private void tuneFirePower(double targetDistance, double targetSpeed){
-		if(getGunTurnRemaining() > 5 || targetSpeed > 4)return;
+		//if(getGunTurnRemaining() > 5 || targetSpeed > 4)return;
 		if(targetDistance < 150){
 			setFire(Rules.MAX_BULLET_POWER);
-		}else{
+		}else if(targetSpeed < 4){
 			setFire(1);
+		}
+	}
+	
+	private void turnAround(ScannedRobotEvent evt){
+		double bearing = evt.getBearing();
+		if(bearing > 90 || bearing < -90 ){
+			setTurnRight(bearing - 90);
+		}else{
+			setTurnLeft(90 - bearing);
+		}
+	}
+	
+	private void escape(Coordinates coords){
+		double bearing = coords.getTheta();
+		if(bearing < 90){
+			setTurnLeft(90);
+		}else if(bearing > 270){
+			setTurnRight(90);
 		}
 	}
 
@@ -109,12 +163,17 @@ public class Shadowbot extends AdvancedRobot
 		}
 	}
 	
+	@Override
+	public void onCustomEvent(CustomEvent event) {
+		nearWall = (NearWallCondition)event.getCondition();
+	}
 	
 
 	/**
 	 * onScannedRobot: What to do when you see another robot
 	 */
 	public void onScannedRobot(ScannedRobotEvent e) {
+		//System.out.println("scanned");
 		this.lastScan = e;
 		Coordinates enemyScanCoords = Coordinates.polar(e.getDistance(), getHeading() + e.getBearing());
 		enemyCoordinates = Coordinates.cartesian(enemyScanCoords.getX() + getX(), enemyScanCoords.getY() + getY()); 
@@ -133,7 +192,10 @@ public class Shadowbot extends AdvancedRobot
 	 * onHitWall: What to do when you hit a wall
 	 */
 	public void onHitWall(HitWallEvent e) {
+		System.out.printf("Hit Wall ; %s°\n",e.getBearing());
+//		Coordinates nearestWall = getNearestWall();
+//		System.out.printf("Nearest Wall: %s°\n",  nearestWall);
 		// Replace the next line with any behavior you would like
-		back(20);
+		//back(20);
 	}	
 }
