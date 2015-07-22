@@ -16,7 +16,7 @@ public class NearWallCondition extends Condition{
 	@Override
 	public boolean test() {
 		coords = robot.getNearestWall();
-		return coords.getRadius() < 100;
+		return coords.getRadius() < 75;
 	}
 
 	public Coordinates getCoords() {
